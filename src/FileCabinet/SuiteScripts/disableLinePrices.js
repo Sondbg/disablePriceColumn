@@ -46,10 +46,10 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
          * @since 2015.2
          */
         function fieldChanged(scriptContext) {
-            if (scriptContext.sublistId == 'item' && scriptContext.fieldId == 'item') {
+            // if (scriptContext.sublistId == 'item' && scriptContext.fieldId == 'item') {
 
-                linePrices(scriptContext)
-            }
+            //     linePrices(scriptContext)
+            // }
         }
 
         /**
@@ -66,9 +66,8 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
             try {
 
                 var currentRecord = scriptContext.currentRecord;
-                var currentSublistName = scriptContext.sublistId;
                 var currentFieldName = scriptContext.fieldId;
-                var sublistName = 'item';
+
                 if (currentFieldName == 'entity') {
                     var entityID = currentRecord.getValue({ fieldId: currentFieldName });
 
@@ -149,25 +148,34 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
          */
         function validateLine(scriptContext) {
             var currentRecord = scriptContext.currentRecord;
+            var sublistId = scriptContext.sublistId;
 
+            if(sublistId!='item'){
+                return true
+            }
             var currentLineIndex = currentRecord.getCurrentSublistIndex({
                 sublistId: 'item'
             });
-            var entityID = currentRecord.getValue({ fieldId: 'entity' });
 
-            var price = currentRecord.getSublistValue({
-                sublistId: 'item',
-                fieldId: 'price',
-                line: currentLineIndex
+            log.debug(sublistId,currentLineIndex)
+            var price = currentRecord.getCurrentSublistValue({
+                sublistId: sublistId,
+                fieldId: 'price'
             });
+           
+            if (price != '-1' && price != '1') {
 
-            if (price != -1 && price != 1) {
-
+                currentRecord.setCurrentSublistValue({
+                    sublistId: sublistId,
+                    fieldId: 'price',
+                    value: 1,
+                    ignoreFieldChange: false
+                })
                 dialog.alert({
                     title: "Не може да слагате отстъпка на реда!",
                     message: "За клиентът не е приложима отстъпка!"
                 })
-                return false
+
             } else {
                 return true
             }
