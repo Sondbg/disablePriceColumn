@@ -20,9 +20,8 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
          */
         function pageInit(scriptContext) {
             var currentRecord = scriptContext.currentRecord;
-            var entityID = currentRecord.getValue({ fieldId: 'entity' });
 
-            if (entityID == 4046) {
+            if (checkIfEntityIsStock(scriptContext)) {
                 currentRecord.getField({
                     fieldId: "discountitem"
                 }).isDisabled = true
@@ -66,18 +65,43 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
             try {
 
                 var currentRecord = scriptContext.currentRecord;
+
                 var currentFieldName = scriptContext.fieldId;
 
                 if (currentFieldName == 'entity') {
-                    var entityID = currentRecord.getValue({ fieldId: currentFieldName });
+                    var discountItemField = currentRecord.getField({
+                        fieldId: "discountitem"
+                    });
+                    var discountRateField = currentRecord.getField({
+                        fieldId: "discountrate"
+                    });
 
-                    if (entityID == 4046) {
-                        currentRecord.getField({
-                            fieldId: "discountitem"
-                        }).isDisabled = true
-                        currentRecord.getField({
-                            fieldId: "discountrate"
-                        }).isDisabled = true
+                    if (checkIfEntityIsStock(scriptContext)) {
+
+                        discountItemField.isDisabled = true;
+                        discountRateField.isDisabled = true;
+
+                    } else {
+                        discountItemField.isDisabled = false;
+                        discountRateField.isDisabled = false;
+                    }
+                } else if (scriptContext.fieldId == 'item' && scriptContext.sublistId == 'item') {
+
+                    if(!checkIfEntityIsStock){
+                        return
+                    }
+                    if (currentRecord.getCurrentSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'itemtype'
+                    })
+                        == "Discount") {
+                        currentRecord.setCurrentSublistValue({
+                            sublistId: 'item',
+                            fieldId: 'item',
+                            value: 0,
+                        });
+
+                        throwUIError(true)
 
                     }
                 }
@@ -147,22 +171,24 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
          * @since 2015.2
          */
         function validateLine(scriptContext) {
-            var currentRecord = scriptContext.currentRecord;
+
             var sublistId = scriptContext.sublistId;
 
-            if(sublistId!='item'){
+            if (sublistId != 'item') {
                 return true
             }
-            var currentLineIndex = currentRecord.getCurrentSublistIndex({
-                sublistId: 'item'
-            });
 
-            log.debug(sublistId,currentLineIndex)
+            if (!checkIfEntityIsStock(scriptContext)) {
+                return true
+            }
+
+            var currentRecord = scriptContext.currentRecord;
+
             var price = currentRecord.getCurrentSublistValue({
                 sublistId: sublistId,
                 fieldId: 'price'
             });
-           
+
             if (price != '-1' && price != '1') {
 
                 currentRecord.setCurrentSublistValue({
@@ -170,11 +196,9 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
                     fieldId: 'price',
                     value: 1,
                     ignoreFieldChange: false
-                })
-                dialog.alert({
-                    title: "Не може да слагате отстъпка на реда!",
-                    message: "За клиентът не е приложима отстъпка!"
-                })
+                });
+
+                throwUIError(true)
 
             } else {
                 return true
@@ -227,6 +251,15 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
 
         }
 
+
+        function checkIfEntityIsStock(scriptContext) {
+            var currentRecord = scriptContext.currentRecord;
+            var entityID = currentRecord.getValue({ fieldId: 'entity' });
+
+            // Проверка дали е "Физическо лице"
+
+            return entityID == 4046
+        }
         function linePrices(scriptContext) {
             var currentRecord = scriptContext.currentRecord;
             var sublistId = scriptContext.sublistId;
@@ -234,19 +267,17 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
             var currentLineIndex = currentRecord.getCurrentSublistIndex({
                 sublistId: sublistId
             });
-            var entityID = currentRecord.getValue({ fieldId: 'entity' });
 
-            if (entityID == 4046) {
+            if (checkIfEntityIsStock(scriptContext)) {
                 currentRecord.getSublistField({
                     sublistId: sublistId,
                     fieldId: 'price',
                     line: currentLineIndex
                 }).isDisabled = true;
 
-                if (currentRecord.getSublistValue({
+                if (currentRecord.getCurrentSublistValue({
                     sublistId: sublistId,
-                    fieldId: 'price',
-                    line: currentLineIndex
+                    fieldId: 'price'
                 }) != '-1') {
                     currentRecord.getSublistField({
                         sublistId: sublistId,
@@ -262,6 +293,19 @@ define(['N/log', 'N/search', 'N/ui/dialog'],
                 }
 
             }
+        }
+
+        function throwUIError(discountErr) {
+            var title;
+            var message;
+            if (discountErr) {
+                title = "Не може да слагате отстъпка на реда!";
+                message = "За клиентът не е приложима отстъпка!";
+            }
+            dialog.alert({
+                title: title,
+                message: message
+            })
         }
 
         return {
