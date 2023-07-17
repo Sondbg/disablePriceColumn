@@ -403,7 +403,7 @@ define([
                     }
                 } else if (scriptContext.fieldId == 'item' && scriptContext.sublistId == 'item') {
 
-                    if (!checkIfEntityIsStock) {
+                    if (!checkIfEntityIsStock(scriptContext)) {
                         return
                     }
                     if (currentRecord.getCurrentSublistValue({
